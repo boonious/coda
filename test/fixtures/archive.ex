@@ -30,7 +30,7 @@ defmodule Fixtures.Archive do
     }
   end
 
-  def data_frame(data \\ scrobbles_json()) do
+  def dataframe(data \\ scrobbles_json()) do
     data
     |> Jason.decode!()
     |> LastfmArchive.Archive.Scrobble.new()

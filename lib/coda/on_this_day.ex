@@ -3,36 +3,14 @@ defmodule Coda.OnThisDay do
   Create on this day analytics and display them in Livebook.
   """
 
-  # these concerns and the analytics and UI functions in this module needs splitting up
-  use Coda.Behaviour.Analytics, facets: Coda.Settings.facets()
-  use Coda.Behaviour.Livebook, facets: Coda.Settings.facets()
+  use Coda.Behaviour.Livebook, facets: Coda.FacetSettings.facets()
 
-  require Explorer.DataFrame
-  alias Explorer.DataFrame
-
+  import Coda.Analytics.OnThisDay
   import Explorer.Series, only: [not_equal: 2]
-
-  def columns, do: ["id", "artist", "datetime", "year", "album", "track", "mmdd"]
-
-  @impl true
-  def data_frame(opts \\ []) do
-    Keyword.validate!(opts, format: :ipc_stream, facet: :scrobbles, columns: columns())
-    |> read_data_frame()
-    |> filter_data_frame()
-  end
-
-  defp read_data_frame(opts) do
-    LastfmArchive.default_user() |> LastfmArchive.read(opts)
-  end
-
-  defp filter_data_frame({:ok, df}), do: df |> DataFrame.filter(contains(mmdd, this_day()))
-  defp filter_data_frame(error), do: error
-
-  def this_day(format \\ "%m%d"), do: Date.utc_today() |> Calendar.strftime(format)
 
   def render_overview(%Explorer.DataFrame{} = df) do
     df
-    |> data_frame_stats()
+    |> digest()
     |> overview_ui()
   end
 

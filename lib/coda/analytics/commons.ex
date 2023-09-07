@@ -1,4 +1,4 @@
-defmodule Coda.Analytics do
+defmodule Coda.Analytics.Commons do
   @moduledoc """
   Common data frame analytics functions.
   """
@@ -7,9 +7,9 @@ defmodule Coda.Analytics do
   require Explorer.DataFrame
 
   import Explorer.Series, only: [equal: 2]
-  import Coda.Settings
+  import Coda.FacetSettings
 
-  @type data_frame :: Coda.Behaviour.Analytics.data_frame()
+  @type dataframe :: Coda.Behaviour.Analytics.dataframe()
   @type group :: Coda.Behaviour.Analytics.group()
 
   @doc """
@@ -19,7 +19,7 @@ defmodule Coda.Analytics do
   - `filter` - an `Explorer.DataFrame` filter function that excludes data in analytics
   - `counts` - includes only facets with this counts (integer)
   """
-  @spec frequencies(data_frame(), group(), keyword()) :: data_frame()
+  @spec frequencies(dataframe(), group(), keyword()) :: dataframe()
   def frequencies(df, group, opts \\ [])
   def frequencies(df, group, []), do: df |> DataFrame.frequencies(group |> List.wrap())
 
@@ -52,7 +52,7 @@ defmodule Coda.Analytics do
   The function also pivots and creates additional `year` columns
   with annual play counts per group.
   """
-  @spec create_group_stats(data_frame(), String.t()) :: data_frame()
+  @spec create_group_stats(dataframe(), String.t()) :: dataframe()
   def create_group_stats(df, group) do
     df
     |> DataFrame.group_by(group)
@@ -100,7 +100,7 @@ defmodule Coda.Analytics do
   @doc """
   Rank data frame by total plays count and return top n rows.
   """
-  @spec most_played(data_frame(), list()) :: data_frame()
+  @spec most_played(dataframe(), list()) :: dataframe()
   def most_played(df, opts \\ []) do
     opts = Keyword.validate!(opts, default_opts())
 

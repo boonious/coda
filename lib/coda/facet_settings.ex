@@ -1,4 +1,4 @@
-defmodule Coda.Settings do
+defmodule Coda.FacetSettings do
   @moduledoc false
 
   import Explorer.Series, only: [count: 1, distinct: 1]

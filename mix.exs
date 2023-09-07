@@ -21,7 +21,7 @@ defmodule Coda.MixProject do
       source_url: "https://github.com/boonious/coda",
       homepage_url: "https://github.com/boonious/coda",
       docs: [
-        main: "Coda",
+        main: "readme",
         extras: [
           "README.md",
           "CHANGELOG.md",
@@ -47,7 +47,7 @@ defmodule Coda.MixProject do
 
   defp deps do
     [
-      {:lastfm_archive, "~> 1.0"},
+      {:lastfm_archive, "~> 1.1"},
 
       # test and dev only
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},

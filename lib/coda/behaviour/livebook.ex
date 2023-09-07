@@ -6,15 +6,14 @@ defmodule Coda.Behaviour.Livebook do
   alias Explorer.DataFrame
   alias Explorer.Series
 
-  import Coda.Settings
+  import Coda.FacetSettings
 
-  @type data_frame :: Coda.Behaviour.Analytics.data_frame()
-  @type data_frame_stats :: Coda.Behaviour.Analytics.data_frame_stats()
+  @type digest :: Coda.Behaviour.Analytics.digest()
   @type facets :: Coda.Behaviour.Analytics.facets()
   @type kino_ui :: Kino.Markdown.t() | struct()
   @type options :: keyword()
 
-  @callback overview(data_frame_stats()) :: kino_ui()
+  @callback overview(digest()) :: kino_ui()
   @callback most_played_ui(facets(), options) :: kino_ui()
 
   defmacro __using__(opts) do
