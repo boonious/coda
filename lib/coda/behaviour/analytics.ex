@@ -1,6 +1,6 @@
 defmodule Coda.Behaviour.Analytics do
   @moduledoc """
-  Behaviour, macro and functions for Explorer.DataFrame analytics
+  Behaviour of facets analytics
   """
 
   alias Explorer.DataFrame
@@ -16,19 +16,18 @@ defmodule Coda.Behaviour.Analytics do
           year: %{count: integer(), max: integer(), min: integer()}
         }
 
-  @type group :: DataFrame.column_name() | DataFrame.column_names()
+  @type facet_type :: DataFrame.column_name() | DataFrame.column_names()
+  @type facets :: DataFrame.t()
   @type options :: Keyword.t()
+  @type scrobbles :: DataFrame.t()
 
-  @type top_facets :: DataFrame.t()
-  @type top_facets_stats :: %{integer() => dataframe()}
+  @type facets_analytics_response :: {facets(), facet_type(), scrobbles()}
 
-  @type facets :: {top_facets(), top_facets_stats()}
-
-  @callback dataframe(format: atom()) :: {:ok, dataframe()} | {:error, term}
+  @callback dataframe(options()) :: {:ok, dataframe()} | {:error, term}
   @callback digest(dataframe()) :: digest()
 
   for facet <- facets() do
-    @callback unquote(:"top_#{facet}s")(dataframe(), options()) :: facets()
-    @callback unquote(:"sample_#{facet}s")(dataframe(), options()) :: facets()
+    @callback unquote(:"top_#{facet}s")(dataframe(), options()) :: facets_analytics_response()
+    @callback unquote(:"sample_#{facet}s")(dataframe(), options()) :: facets_analytics_response()
   end
 end

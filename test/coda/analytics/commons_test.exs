@@ -14,48 +14,24 @@ defmodule Coda.Analytics.CommonsTest do
 
   describe "frequencies/2" do
     test "for a data frame", %{dataframe: df} do
-      group = ["artist", "year"]
+      facet = ["artist", "year"]
 
-      assert %Explorer.DataFrame{} = df = Commons.frequencies(df, group) |> DataFrame.collect()
-      assert df |> DataFrame.names() == group ++ ["counts"]
+      assert %DataFrame{} = df = Commons.frequencies(df, facet) |> DataFrame.collect()
+      assert df |> DataFrame.names() == facet ++ ["counts"]
       assert df["counts"] |> Series.to_list() == [1]
     end
 
     test "filter option to exclude untitled albums" do
       df = recent_tracks_without_album_title() |> dataframe()
-      filter_fun = &Series.not_equal(&1["album"], "")
+      fun = &Series.not_equal(&1["album"], "")
 
-      group = ["album", "year"]
-
-      assert %Explorer.DataFrame{} =
-               df = Commons.frequencies(df, group, filter: filter_fun) |> DataFrame.collect()
-
-      assert df["counts"] |> Series.to_list() == []
-
-      group = "album"
-
-      assert %Explorer.DataFrame{} =
-               df = Commons.frequencies(df, group, filter: filter_fun) |> DataFrame.collect()
-
-      assert df["counts"] |> Series.to_list() == []
+      assert %DataFrame{} = df = Commons.frequencies(df, "album", filter: fun)
+      assert df |> DataFrame.collect() |> DataFrame.pull("album") |> Series.to_list() == []
     end
   end
 
-  test "create_group_stats/2", %{dataframe: df} do
-    group = "album"
-    df_freq = Commons.frequencies(df, [group, "year"])
-
-    assert %Explorer.DataFrame{} = df = Commons.create_group_stats(df_freq, group)
-    assert df["2023"] |> Series.to_list() == [1]
-    assert df["years_freq"] |> Series.to_list() == [1]
-    assert df["total_plays"] |> Series.to_list() == [1]
-    assert "album" in (df |> DataFrame.names())
-    assert "year" not in (df |> DataFrame.names())
-  end
-
-  test "most_played/2", %{dataframe: df} do
-    group = "album"
-    df = Commons.frequencies(df, [group, "year"]) |> Commons.create_group_stats(group)
-    assert %Explorer.DataFrame{} = Commons.most_played(df)
+  test "rank_and_limit/2", %{dataframe: df} do
+    df = Commons.frequencies(df, "album")
+    assert %DataFrame{} = Commons.rank_and_limit(df) |> DataFrame.collect()
   end
 end

@@ -2,116 +2,61 @@ defmodule Coda.Analytics.Commons do
   @moduledoc """
   Common data frame analytics functions.
   """
-
   alias Explorer.DataFrame
   require Explorer.DataFrame
-
-  import Explorer.Series, only: [equal: 2]
   import Coda.FacetSettings
 
   @type dataframe :: Coda.Behaviour.Analytics.dataframe()
-  @type group :: Coda.Behaviour.Analytics.group()
+  @type facet_type :: Coda.Behaviour.Analytics.facet_type()
 
   @doc """
-  Compute frequency for a columns subset, filter untitled albums.
+  Compute count and frequency for a columns subset.
 
   Options:
   - `filter` - an `Explorer.DataFrame` filter function that excludes data in analytics
   - `counts` - includes only facets with this counts (integer)
+  - `sort` - by `:counts` or `:freq` (frequencies over the years)
   """
-  @spec frequencies(dataframe(), group(), keyword()) :: dataframe()
-  def frequencies(df, group, opts \\ [])
-  def frequencies(df, group, []), do: df |> DataFrame.frequencies(group |> List.wrap())
+  @spec frequencies(dataframe(), facet_type(), keyword()) :: dataframe()
+  def frequencies(df, facet_type, opts \\ [])
+  def frequencies(df, facet_type, []), do: df |> DataFrame.frequencies(facet_type |> List.wrap())
 
-  def frequencies(df, group, opts) when is_list(opts) do
+  def frequencies(df, facet_type, opts) when is_list(opts) do
     opts = Keyword.validate!(opts, default_opts())
 
     df
     |> maybe_pre_filter(opts[:filter])
-    |> DataFrame.frequencies(group |> List.wrap())
-    |> maybe_post_filter(opts[:counts])
+    |> compute_counts_and_freq(facet_type |> List.wrap(), opts[:sort])
+    |> maybe_post_filter_by_count(opts[:counts])
+  end
+
+  defp compute_counts_and_freq(df, facet_type, :counts) do
+    df |> DataFrame.frequencies(facet_type)
+  end
+
+  defp compute_counts_and_freq(df, facet_type, :freq) do
+    df
+    |> DataFrame.distinct(facet_type ++ ["year"])
+    |> DataFrame.frequencies(facet_type)
+    |> DataFrame.rename(counts: "freq")
+    |> DataFrame.join(df |> DataFrame.frequencies(facet_type))
   end
 
   defp maybe_pre_filter(df, nil), do: df
+  defp maybe_pre_filter(df, filter), do: df |> DataFrame.filter_with(filter)
 
-  defp maybe_pre_filter(df, filter) when is_function(filter),
-    do: df |> DataFrame.filter_with(filter)
-
-  defp maybe_post_filter(df, -1), do: df
-
-  defp maybe_post_filter(df, counts) when is_integer(counts),
-    do: df |> DataFrame.filter(counts == ^counts)
+  defp maybe_post_filter_by_count(df, -1), do: df
+  defp maybe_post_filter_by_count(df, counts), do: df |> DataFrame.filter(counts == ^counts)
 
   @doc """
-  Calculate stats for a single group such as "artist", "album".
-
-  Stats include:
-  - `years_freq`: frequency of yearly occurrance per group
-  - `total_plays`: total number of plays per group
-
-  The function also pivots and creates additional `year` columns
-  with annual play counts per group.
+  Rank data frame by counts or (year) frequency, limits to nth rows.
   """
-  @spec create_group_stats(dataframe(), String.t()) :: dataframe()
-  def create_group_stats(df, group) do
-    df
-    |> DataFrame.group_by(group)
-    |> DataFrame.collect()
-    |> DataFrame.mutate(years_freq: count(year), total_plays: sum(counts))
-    |> DataFrame.pivot_wider("year", ["counts"])
-    |> DataFrame.ungroup(group)
-  end
-
-  def create_facet_stats(df, df_source) do
-    df
-    |> DataFrame.to_rows()
-    |> then(fn facets ->
-      facet_type = facets |> hd |> facet_type()
-
-      {
-        df,
-        for {facet, index} <- facets |> Enum.with_index(), into: %{"type" => facet_type} do
-          create_facet_stats(df_source, facet, index)
-        end
-      }
-    end)
-  end
-
-  def create_facet_stats(df, facet, index) do
-    facet_type = facet |> facet_type()
-    mutation_fun = facet_mutation_fun()[facet_type]
-
-    facet_value = facet["#{facet_type}"]
-    filter_fun = &equal(&1["#{facet_type}"], facet_value)
-
-    {index, df |> filter_mutate_row("#{facet_type}", filter_fun, mutation_fun)}
-  end
-
-  defp filter_mutate_row(df, column, filter_fun, mutate_fun) do
-    df
-    |> DataFrame.filter_with(filter_fun)
-    |> DataFrame.select(["track", "album", "artist", "year"])
-    |> DataFrame.group_by(column)
-    |> DataFrame.collect()
-    |> DataFrame.mutate_with(mutate_fun)
-    |> DataFrame.distinct()
-  end
-
-  @doc """
-  Rank data frame by total plays count and return top n rows.
-  """
-  @spec most_played(dataframe(), list()) :: dataframe()
-  def most_played(df, opts \\ []) do
+  @spec rank_and_limit(dataframe(), keyword()) :: dataframe()
+  def rank_and_limit(df, opts \\ []) do
     opts = Keyword.validate!(opts, default_opts())
 
     df
-    |> DataFrame.arrange_with(&[desc: &1[opts[:sort_by]]])
+    |> DataFrame.arrange_with(&[desc: &1[opts[:sort]]])
     |> DataFrame.head(opts[:rows])
-  end
-
-  def sample(df, rows: rows) do
-    df
-    |> DataFrame.collect()
-    |> DataFrame.sample(rows, replace: true)
   end
 end

@@ -28,15 +28,25 @@ defmodule Coda.Analytics.OnThisDayTest do
 
     %{
       user: user,
-      data_frame:
+      dataframe:
         user |> recent_tracks_on_this_day() |> dataframe() |> DataFrame.rename(name: "track"),
       file_archive_metadata: file_archive_metadata
     }
   end
 
   describe "dataframe/1" do
-    setup do
-      %{options: [columns: OnThisDay.columns(), facet: :scrobbles, format: :ipc_stream]}
+    setup context do
+      this_day = Date.utc_today() |> Calendar.strftime("%m%d")
+
+      %{
+        options: [
+          user: context.user,
+          this_day: this_day,
+          columns: OnThisDay.columns(),
+          facet: :scrobbles,
+          format: :ipc_stream
+        ]
+      }
     end
 
     test "contains data on this day", %{
@@ -47,10 +57,14 @@ defmodule Coda.Analytics.OnThisDayTest do
       single_scrobble_on_this_day = recent_tracks_on_this_day(user)
 
       DerivedArchiveMock
-      |> expect(:describe, fn ^user, ^opts -> {:ok, metadata} end)
-      |> expect(:read, fn ^metadata, ^opts -> {:ok, dataframe(single_scrobble_on_this_day)} end)
+      |> expect(:describe, 2, fn ^user, options ->
+        assert options |> Enum.into(%{}) == opts |> Enum.into(%{})
+        {:ok, metadata}
+      end)
+      |> expect(:read, 2, fn ^metadata, _opts -> {:ok, dataframe(single_scrobble_on_this_day)} end)
 
-      assert %DataFrame{} = df = OnThisDay.dataframe(format: opts[:format])
+      assert %DataFrame{} = OnThisDay.dataframe()
+      assert %DataFrame{} = df = OnThisDay.dataframe(opts)
       assert {1, _column_count} = df |> DataFrame.collect() |> DataFrame.shape()
     end
 
@@ -63,12 +77,14 @@ defmodule Coda.Analytics.OnThisDayTest do
       single_scrobble_not_on_this_day = recent_tracks_on_this_day(user, not_now)
 
       DerivedArchiveMock
-      |> expect(:describe, fn ^user, ^opts -> {:ok, metadata} end)
-      |> expect(:read, fn ^metadata, ^opts ->
+      |> expect(:describe, fn ^user, _pts -> {:ok, metadata} end)
+      |> expect(:read, fn ^metadata, _opts ->
         {:ok, dataframe(single_scrobble_not_on_this_day)}
       end)
 
-      assert %DataFrame{} = df = OnThisDay.dataframe(format: opts[:format])
+      assert %DataFrame{} =
+               df = OnThisDay.dataframe(format: opts[:format], this_day: opts[:this_day])
+
       assert {0, _column_count} = df |> DataFrame.collect() |> DataFrame.shape()
     end
 
@@ -85,7 +101,7 @@ defmodule Coda.Analytics.OnThisDayTest do
     end
   end
 
-  test "digest/0", %{data_frame: df} do
+  test "digest/0", %{dataframe: df} do
     assert %{
              album: %{count: 1},
              artist: %{count: 1},
@@ -94,17 +110,5 @@ defmodule Coda.Analytics.OnThisDayTest do
              track: %{count: 1},
              year: %{count: 1, max: 2023, min: 2023}
            } = df |> OnThisDay.digest()
-  end
-
-  describe "this_day/1" do
-    test "default day string" do
-      day = Date.utc_today() |> Calendar.strftime("%m%d")
-      assert ^day = OnThisDay.this_day()
-    end
-
-    test "other formatted day string" do
-      day = Date.utc_today() |> Calendar.strftime("%B")
-      assert ^day = OnThisDay.this_day("%B")
-    end
   end
 end

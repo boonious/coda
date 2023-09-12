@@ -10,17 +10,25 @@ defmodule Coda.Analytics.OnThisDay do
 
   @impl true
   def dataframe(opts \\ []) do
-    Keyword.validate!(opts, format: :ipc_stream, facet: :scrobbles, columns: columns())
-    |> read_dataframe()
-    |> filter_dataframe()
+    opts =
+      Keyword.validate!(opts,
+        format: :ipc_stream,
+        facet: :scrobbles,
+        columns: columns(),
+        this_day: this_day(),
+        user: LastfmArchive.default_user()
+      )
+
+    read_dataframe(opts) |> filter_dataframe(opts[:this_day])
   end
 
-  defp read_dataframe(opts) do
-    LastfmArchive.default_user() |> LastfmArchive.read(opts)
+  defp read_dataframe(opts), do: opts[:user] |> LastfmArchive.read(opts)
+
+  defp filter_dataframe({:ok, df}, this_day) do
+    df |> DataFrame.filter(contains(mmdd, ^this_day))
   end
 
-  defp filter_dataframe({:ok, df}), do: df |> DataFrame.filter(contains(mmdd, this_day()))
-  defp filter_dataframe(error), do: error
+  defp filter_dataframe(error, _this_day), do: error
 
-  def this_day(format \\ "%m%d"), do: Date.utc_today() |> Calendar.strftime(format)
+  defp this_day(format \\ "%m%d"), do: Date.utc_today() |> Calendar.strftime(format)
 end

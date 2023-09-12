@@ -8,15 +8,7 @@ defmodule Coda.Analytics.Base do
   defmacro __using__(opts) do
     quote location: :keep, bind_quoted: [opts: opts] do
       @behaviour Coda.Behaviour.Analytics
-
-      import Coda.Analytics.Commons,
-        only: [
-          create_group_stats: 2,
-          create_facet_stats: 2,
-          frequencies: 3,
-          most_played: 2,
-          sample: 2
-        ]
+      import Coda.Analytics.Commons, only: [frequencies: 3, rank_and_limit: 2]
 
       @impl true
       def digest(df) do
@@ -40,26 +32,30 @@ defmodule Coda.Analytics.Base do
       for facet <- Keyword.fetch!(opts, :facets) do
         @impl true
         def unquote(:"top_#{facet}s")(df, options \\ []) do
-          facet = unquote(facet)
-          group = [facet, :year]
+          type = unquote(facet)
           opts = Keyword.validate!(options, default_opts())
 
           df
-          |> frequencies(group, filter: opts[:filter])
-          |> create_group_stats(facet)
-          |> most_played(opts)
-          |> create_facet_stats(df)
+          |> frequencies(type, filter: opts[:filter], sort: opts[:sort])
+          |> rank_and_limit(opts)
+          |> DataFrame.collect()
+          |> then(fn facets ->
+            {facets, type, DataFrame.join(facets, df |> DataFrame.collect())}
+          end)
         end
 
         @impl true
         def unquote(:"sample_#{facet}s")(df, options \\ []) do
-          facet = unquote(facet)
+          type = unquote(facet)
           opts = Keyword.validate!(options, default_opts())
 
           df
-          |> frequencies([facet], counts: opts[:counts])
-          |> sample(rows: opts[:rows])
-          |> create_facet_stats(df)
+          |> frequencies(type, filter: opts[:filter], counts: opts[:counts])
+          |> DataFrame.collect()
+          |> DataFrame.sample(opts[:rows], replace: true)
+          |> then(fn facets ->
+            {facets, type, DataFrame.join(facets, df |> DataFrame.collect())}
+          end)
         end
 
         defoverridable [{:"top_#{facet}s", 2}, {:"sample_#{facet}s", 2}]
