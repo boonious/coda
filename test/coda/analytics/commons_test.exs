@@ -1,15 +1,14 @@
 defmodule Coda.Analytics.CommonsTest do
   use ExUnit.Case, async: true
-
-  import Fixtures.Archive
-  import Fixtures.Lastfm
+  import Coda.Factory
 
   alias Explorer.DataFrame
   alias Explorer.Series
   alias Coda.Analytics.Commons
 
   setup_all do
-    %{dataframe: LastfmArchive.default_user() |> recent_tracks_on_this_day() |> dataframe()}
+    # 5 scrobbles from a same artist
+    %{dataframe: build(:scrobbles, rows: 5, artist: "SZA") |> dataframe()}
   end
 
   describe "frequencies/2" do
@@ -18,11 +17,16 @@ defmodule Coda.Analytics.CommonsTest do
 
       assert %DataFrame{} = df = Commons.frequencies(df, facet) |> DataFrame.collect()
       assert df |> DataFrame.names() == facet ++ ["counts"]
-      assert df["counts"] |> Series.to_list() == [1]
+      assert df["counts"] |> Series.to_list() == [5]
     end
 
     test "filter option to exclude untitled albums" do
-      df = recent_tracks_without_album_title() |> dataframe()
+      df =
+        build(:scrobbles, rows: 5, artist: "SZA", album: "")
+        |> Enum.map(&Map.from_struct/1)
+        |> DataFrame.new(lazy: true)
+        |> DataFrame.rename(name: "track")
+
       fun = &Series.not_equal(&1["album"], "")
 
       assert %DataFrame{} = df = Commons.frequencies(df, "album", filter: fun)

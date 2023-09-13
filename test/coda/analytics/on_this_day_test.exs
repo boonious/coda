@@ -5,31 +5,33 @@ defmodule Coda.Analytics.OnThisDayTest do
   alias Coda.Analytics.OnThisDay
   alias LastfmArchive.DerivedArchiveMock
 
-  import Fixtures.Archive
-  import Fixtures.Lastfm
+  import Coda.Factory
   import Hammox
 
   setup_all do
     user = LastfmArchive.default_user()
     today = Date.utc_today()
 
+    first_time =
+      DateTime.from_iso8601("#{today |> Date.add(-1) |> to_string()}T00:00:07Z")
+      |> elem(1)
+      |> DateTime.to_unix()
+
+    latest =
+      DateTime.from_iso8601("#{today |> Date.add(1) |> to_string()}T18:50:07Z")
+      |> elem(1)
+      |> DateTime.to_unix()
+
     file_archive_metadata =
-      new_archive_metadata(
-        user: user,
-        start:
-          DateTime.from_iso8601("#{today |> Date.add(-1) |> to_string()}T00:00:07Z")
-          |> elem(1)
-          |> DateTime.to_unix(),
-        end:
-          DateTime.from_iso8601("#{today |> Date.add(1) |> to_string()}T18:50:07Z")
-          |> elem(1)
-          |> DateTime.to_unix()
+      build(:file_archive_metadata,
+        creator: user,
+        first_scrobble_time: first_time,
+        latest_scrobble_time: latest
       )
 
     %{
       user: user,
-      dataframe:
-        user |> recent_tracks_on_this_day() |> dataframe() |> DataFrame.rename(name: "track"),
+      dataframe: build(:scrobbles, rows: 1) |> dataframe(),
       file_archive_metadata: file_archive_metadata
     }
   end
@@ -51,17 +53,16 @@ defmodule Coda.Analytics.OnThisDayTest do
 
     test "contains data on this day", %{
       user: user,
+      dataframe: df,
       file_archive_metadata: metadata,
       options: opts
     } do
-      single_scrobble_on_this_day = recent_tracks_on_this_day(user)
-
       DerivedArchiveMock
       |> expect(:describe, 2, fn ^user, options ->
         assert options |> Enum.into(%{}) == opts |> Enum.into(%{})
         {:ok, metadata}
       end)
-      |> expect(:read, 2, fn ^metadata, _opts -> {:ok, dataframe(single_scrobble_on_this_day)} end)
+      |> expect(:read, 2, fn ^metadata, _opts -> {:ok, df} end)
 
       assert %DataFrame{} = OnThisDay.dataframe()
       assert %DataFrame{} = df = OnThisDay.dataframe(opts)
@@ -73,13 +74,13 @@ defmodule Coda.Analytics.OnThisDayTest do
       file_archive_metadata: metadata,
       options: opts
     } do
-      not_now = DateTime.utc_now() |> DateTime.add(-5, :day) |> DateTime.to_unix()
-      single_scrobble_not_on_this_day = recent_tracks_on_this_day(user, not_now)
+      not_this_day = DateTime.utc_now() |> DateTime.add(-30, :day)
+      not_this_day_df = build(:scrobbles, date_time: not_this_day) |> dataframe()
 
       DerivedArchiveMock
       |> expect(:describe, fn ^user, _pts -> {:ok, metadata} end)
       |> expect(:read, fn ^metadata, _opts ->
-        {:ok, dataframe(single_scrobble_not_on_this_day)}
+        {:ok, not_this_day_df}
       end)
 
       assert %DataFrame{} =

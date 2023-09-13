@@ -37,7 +37,7 @@ to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:coda, "~> 0.1"}
+    {:coda, "~> 0.2"}
   ]
 end
 ```

@@ -7,27 +7,20 @@ defmodule Coda.Analytics.BaseTest do
   alias Explorer.DataFrame
   alias Explorer.Series
 
-  import Fixtures.Archive
-  import Fixtures.Lastfm
-
   @test_analytics Module.concat(Base, Test)
 
   defmodule @test_analytics do
     use Base, facets: Coda.FacetSettings.facets()
+    import Coda.Factory
+    alias Explorer.DataFrame
 
     @impl true
-    def dataframe(_opts), do: Fixtures.Archive.dataframe()
-  end
-
-  setup_all do
-    %{
-      dataframe:
-        "a_user" |> recent_tracks_on_this_day() |> dataframe() |> DataFrame.rename(name: "track")
-    }
+    def dataframe(_opts), do: build(:scrobbles, rows: 1) |> Coda.Factory.dataframe()
   end
 
   for facet <- FacetSettings.facets() do
-    test "top_#{facet}s/2", %{dataframe: df} do
+    test "top_#{facet}s/2" do
+      df = @test_analytics.dataframe([])
       facet = unquote(facet)
 
       assert {facets, ^facet, scrobbles} = apply(@test_analytics, :"top_#{facet}s", [df])
@@ -39,7 +32,8 @@ defmodule Coda.Analytics.BaseTest do
       assert df |> DataFrame.shape() == {1, 15}
     end
 
-    test "sample_#{facet}s/2", %{dataframe: df} do
+    test "sample_#{facet}s/2" do
+      df = @test_analytics.dataframe([])
       facet = unquote(facet)
 
       assert {facets, ^facet, scrobbles} =
