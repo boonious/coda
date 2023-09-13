@@ -8,7 +8,7 @@ defmodule Coda.MixProject do
   def project do
     [
       app: :coda,
-      version: "0.1.0",
+      version: "0.2.0",
       elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -21,7 +21,7 @@ defmodule Coda.MixProject do
       source_url: "https://github.com/boonious/coda",
       homepage_url: "https://github.com/boonious/coda",
       docs: [
-        main: "Coda",
+        main: "readme",
         extras: [
           "README.md",
           "CHANGELOG.md",
@@ -47,11 +47,13 @@ defmodule Coda.MixProject do
 
   defp deps do
     [
-      {:lastfm_archive, "~> 1.0"},
+      {:lastfm_archive, "~> 1.1"},
+      {:explorer, "~> 0.7"},
 
       # test and dev only
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.30", only: :dev, runtime: false},
+      {:ex_machina, "~> 2.7", only: :test},
       {:hammox, "~> 0.7", only: :test}
     ]
   end

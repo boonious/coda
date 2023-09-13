@@ -6,7 +6,7 @@ Analytics and visualisation of music listening history 听歌历史.
 [lastfm_archive](https://github.com/boonious/lastfm_archive). See:
 [Creating a file archive](https://github.com/boonious/lastfm_archive#livebook-guides).
 
-See [on this day ♫](#livebook-analytics) analytics Livebook.
+See [on this day ♫](#livebook) analytics Livebook.
 
 ## Usage
  
@@ -37,7 +37,7 @@ to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:coda, "~> 0.1"}
+    {:coda, "~> 0.2"}
   ]
 end
 ```

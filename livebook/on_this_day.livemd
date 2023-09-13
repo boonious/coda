@@ -4,7 +4,7 @@
 
 ```elixir
 Mix.install(
-  [{:coda, "~> 0.1"}, {:kino_explorer, "~> 0.1.8"}],
+  [{:coda, "~> 0.2"}, {:kino_explorer, "~> 0.1.8"}],
   config: [
     lastfm_archive: [
       data_dir: "./lastfm_data/",
@@ -14,7 +14,7 @@ Mix.install(
 )
 
 alias Coda.OnThisDay
-dataframe = OnThisDay.data_frame()
+dataframe = Coda.Analytics.OnThisDay.dataframe()
 
 :ok
 ```
@@ -52,19 +52,17 @@ dataframe
 
 In due course, further analytics and visualisation will be presented. These include newly discovered and most frequently played music on this day over the years. Meanwhile you can interactively delve into the data using [Kino explorer](https://hexdocs.pm/kino_explorer/Kino.Explorer.html) below.
 
-<!-- livebook:{"attrs":{"assign_to":null,"collect":true,"data_frame":"dataframe","data_frame_alias":"Elixir.Explorer.DataFrame","is_data_frame":null,"missing_require":"Elixir.Explorer.DataFrame","operations":[{"active":true,"columns":["track","artist","album"],"data_options":{"album":"string","artist":"string","datetime":"datetime[μs]","id":"string","mmdd":"string","track":"string","year":"integer"},"operation_type":"group_by"},{"active":true,"column":"year","data_options":{"album":"string","artist":"string","datetime":"datetime[μs]","id":"string","mmdd":"string","track":"string","year":"integer"},"datalist":[],"filter":"equal","message":null,"operation_type":"filters","type":"integer","value":"2023"},{"active":true,"columns":["id"],"data_options":{"album":"string","artist":"string","datetime":"datetime[μs]","id":"string","mmdd":"string","track":"string","year":"integer"},"operation_type":"summarise","query":"count"},{"active":true,"data_options":{"album":"string","artist":"string","id_count":"integer","track":"string"},"direction":"desc","operation_type":"sorting","sort_by":"id_count"}]},"chunks":null,"kind":"Elixir.KinoExplorer.DataTransformCell","livebook_object":"smart_cell"} -->
+<!-- livebook:{"attrs":{"assign_to":null,"collect":true,"data_frame":"dataframe","data_frame_alias":"Elixir.Explorer.DataFrame","is_data_frame":true,"missing_require":"Elixir.Explorer.DataFrame","operations":[{"active":true,"columns":["track","artist","album"],"data_options":{"album":"string","artist":"string","datetime":"datetime[μs]","id":"string","mmdd":"string","track":"string","year":"integer"},"operation_type":"group_by"},{"active":true,"columns":["id"],"data_options":{"album":"string","artist":"string","datetime":"datetime[μs]","id":"string","mmdd":"string","track":"string","year":"integer"},"operation_type":"summarise","query":"count"},{"active":true,"data_options":{"album":"string","artist":"string","id_count":"integer","track":"string"},"direction":"desc","operation_type":"sorting","sort_by":"id_count"}]},"chunks":null,"kind":"Elixir.KinoExplorer.DataTransformCell","livebook_object":"smart_cell"} -->
 
 ```elixir
 require Explorer.DataFrame
 
 dataframe
 |> Explorer.DataFrame.to_lazy()
-|> Explorer.DataFrame.new(lazy: true)
-|> Explorer.DataFrame.collect()
 |> Explorer.DataFrame.group_by(["track", "artist", "album"])
-|> Explorer.DataFrame.filter(year == 2023)
 |> Explorer.DataFrame.summarise(id_count: count(id))
 |> Explorer.DataFrame.arrange(desc: id_count)
+|> Explorer.DataFrame.collect()
 ```
 
-<!-- livebook:{"offset":3263,"stamp":{"token":"QTEyOEdDTQ.OkrurZUSydkUWLySPvZS_nwzPQtUhzEijahIr0uh3c1S4LpHsjLgMuFN-dQ.Ib1CaXlwGBLib85d.OkJQbMmNGYKXfAW2VLAdJt5TN5foTFGPVGjFb4xuAP2B9w4hpYUw-yOnOrJqiVbTrzbUXLgudz6fuQ8.xZz-9lUqFmtxh0zzRS4VqQ","version":1}} -->
+<!-- livebook:{"offset":2916,"stamp":{"token":"QTEyOEdDTQ.ZFwAk7q90MRtECiErJGpFr0uI466mC2uAMTKVqE73JWJNPKEiSAXOfKK50Q.9JSYEL1Ie5rjEDqF.jYEhR_dU6sA0IDB8fKwh5r6RhfqUHHisJsCbpkAeACJQfkHp8LcYGlF4p-B6UAVbTqPxJj8eMuCkR0Y.J0TwAfX-7sPDuDpOkl13rQ","version":1}} -->
