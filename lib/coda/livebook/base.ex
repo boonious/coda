@@ -3,8 +3,11 @@ defmodule Coda.Livebook.Base do
 
   alias Explorer.DataFrame
   alias Explorer.Series
+  alias VegaLite, as: Vl
 
-  import Coda.FacetSettings, only: [facets: 0]
+  import Coda.Analytics.LastfmArchive.FacetConfigs,
+    only: [facets: 0, facet_singular: 1, facets_singular: 0]
+
   require Explorer.DataFrame
 
   defmacro __using__(opts) do
@@ -13,22 +16,67 @@ defmodule Coda.Livebook.Base do
       import Coda.Livebook.Base
 
       @impl true
-      def overview(stats) do
+      def overview(stats, _opts \\ []) do
+        scrobbles_overview(stats) |> Kino.render()
+
+        [
+          years_digest(stats.years_digest),
+          facets_digest(stats)
+        ]
+        |> Kino.Layout.grid(columns: 2)
+      end
+
+      defp scrobbles_overview(stats) do
         Kino.Markdown.new("""
+        **#{stats.counts}** scrobbles,
+        over **#{stats.n_years}** years,
+        **#{stats.min_year}** - **#{stats.max_year}**:
         ###
-        There are **#{stats.id.count}** scrobbles on **#{Date.utc_today() |> Calendar.strftime("%B %d")}**,
-        over **#{stats.year.count}** years
-        (**#{stats.year.min}** - **#{stats.year.max}**):
-        - **#{stats.album.count}** albums, **#{stats.artist.count}** artists, **#{stats.track.count}** tracks
-        <br/><br/>
         """)
       end
 
+      defp facets_digest(stats) do
+        for type <- facets() do
+          pcent = fn x -> (x / stats[:"n_#{type}"] * 100) |> round() end
+
+          """
+          - **#{stats[:"n_#{type}"]}** #{type}
+          #{facet_digest(stats, type, pcent)}
+          """
+        end
+        |> Enum.join()
+        |> Kino.Markdown.new()
+      end
+
+      defp facet_digest(%{top_facets: f, played_once_facets: p, new_facets: n}, type, perc_fun) do
+        """
+          - **#{perc_fun.(p[type][:counts])}%** <small> played once</small>, **#{perc_fun.(n[type][:counts])}%** <small> for the first time</small>
+          - <small>top</small> **#{hd(f[type])[facet_singular(type)]}** <sup>#{hd(f[type])[:counts]}x</sup>
+        """
+      end
+
+      defp facet_digest(%{top_facets: f, played_once_facets: p}, type, perc_fun) do
+        """
+          - **#{perc_fun.(p[type][:counts])}%** <small> played once</small>
+          - <small>top</small> **#{hd(f[type])[facet_singular(type)]}** <sup>#{hd(f[type])[:counts]}x</sup>
+        """
+      end
+
+      defp years_digest(stats) do
+        Vl.new(padding: [left: 75])
+        |> Vl.data_from_values(stats)
+        |> Vl.mark(:arc, inner_radius: 75, outer_radius: 150, tooltip: true)
+        |> Vl.encode_field(:theta, "counts", type: :quantitative)
+        |> Vl.encode_field(:color, "year", type: :ordinal, scale: [scheme: "turbo"], legend: nil)
+      end
+
       @impl true
-      def render_facets({facets, facet_type, scrobbles}, options \\ []) do
+      def render_facets({facets, facet_type, scrobbles}, opts \\ []) do
+        title = Keyword.get(opts, :title, "#{facet_type}s" |> String.capitalize())
+
         [
           "#### ",
-          "#### #{"#{facet_type}" |> String.capitalize()}s",
+          "#### #{title}",
           for {%{"counts" => count} = facet, index} <-
                 facets |> DataFrame.to_rows() |> Enum.with_index() do
             facet_value = facet[facet_type |> to_string()]
@@ -42,10 +90,11 @@ defmodule Coda.Livebook.Base do
         |> Kino.Markdown.new()
       end
 
-      defoverridable overview: 1, render_facets: 2
+      defoverridable overview: 2, render_facets: 2
     end
   end
 
+  @spec more_info({Explorer.DataFrame.t(), any, atom | maybe_improper_list}) :: binary
   def more_info({scrobbles, value, type}) do
     scrobbles = scrobbles |> DataFrame.filter(col(^type) == ^value)
 
@@ -57,7 +106,8 @@ defmodule Coda.Livebook.Base do
   end
 
   defp more_info(scrobbles, :track) do
-    other_facets = facets() |> List.delete(:track)
+    other_facets = facets_singular() |> List.delete(:track)
+
     scrobbles = scrobbles |> DataFrame.distinct(other_facets)
 
     case scrobbles |> DataFrame.shape() do
@@ -75,7 +125,7 @@ defmodule Coda.Livebook.Base do
   end
 
   defp more_info(scrobbles, type) when is_atom(type) do
-    more_info(scrobbles, facets() |> List.delete(type))
+    more_info(scrobbles, facets_singular() |> List.delete(type))
   end
 
   defp more_info(scrobbles, facets) when is_list(facets) do

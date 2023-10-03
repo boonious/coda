@@ -47,8 +47,10 @@ defmodule Coda.MixProject do
 
   defp deps do
     [
-      {:lastfm_archive, "~> 1.1"},
+      {:lastfm_archive, "~> 1.2"},
       {:explorer, "~> 0.7"},
+      {:kino, "~> 0.10"},
+      {:kino_vega_lite, "~> 0.1.10"},
 
       # test and dev only
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},

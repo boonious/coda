@@ -4,7 +4,7 @@ defmodule Coda.Analytics.Commons do
   """
   alias Explorer.DataFrame
   require Explorer.DataFrame
-  import Coda.FacetSettings
+  import Coda.Analytics.LastfmArchive.FacetConfigs
 
   @type dataframe :: Coda.Behaviour.Analytics.dataframe()
   @type facet_type :: Coda.Behaviour.Analytics.facet_type()

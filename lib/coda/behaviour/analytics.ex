@@ -4,18 +4,21 @@ defmodule Coda.Behaviour.Analytics do
   """
 
   alias Explorer.DataFrame
-  import Coda.FacetSettings
+  import Coda.Analytics.LastfmArchive.FacetConfigs
 
   @type dataframe :: DataFrame.t()
   @type digest :: %{
-          album: %{count: integer()},
-          artist: %{count: integer()},
-          datetime: %{count: integer()},
-          id: %{count: integer()},
-          name: %{count: integer()},
-          year: %{count: integer(), max: integer(), min: integer()}
+          counts: integer(),
+          max_year: integer(),
+          min_year: integer(),
+          n_albums: integer(),
+          n_artists: integer(),
+          n_tracks: integer(),
+          n_years: integer(),
+          years_digest: list(year_count())
         }
 
+  @type year_count :: %{year: integer(), counts: integer()}
   @type facet_type :: DataFrame.column_name() | DataFrame.column_names()
   @type facets :: DataFrame.t()
   @type options :: Keyword.t()
@@ -27,7 +30,7 @@ defmodule Coda.Behaviour.Analytics do
   @callback digest(dataframe()) :: digest()
 
   for facet <- facets() do
-    @callback unquote(:"top_#{facet}s")(dataframe(), options()) :: facets_analytics_response()
-    @callback unquote(:"sample_#{facet}s")(dataframe(), options()) :: facets_analytics_response()
+    @callback unquote(:"top_#{facet}")(dataframe(), options()) :: facets_analytics_response()
+    @callback unquote(:"sample_#{facet}")(dataframe(), options()) :: facets_analytics_response()
   end
 end
