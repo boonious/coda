@@ -71,18 +71,18 @@ defmodule Coda.Livebook.Base do
       end
 
       @impl true
-      def render_facets({facets, facet_type, scrobbles}, opts \\ []) do
-        title = Keyword.get(opts, :title, "#{facet_type}s" |> String.capitalize())
+      def render_facets({facets, type, scrobbles}, opts \\ []) do
+        title = Keyword.get(opts, :title, "#{type}s")
 
         [
           "#### ",
           "#### #{title}",
           for {%{"counts" => count} = facet, index} <-
                 facets |> DataFrame.to_rows() |> Enum.with_index() do
-            facet_value = facet[facet_type |> to_string()]
+            value = facet[type |> to_string()]
 
-            "#{index + 1}. **#{facet_value}** <sup>#{count}x</sup> <br/>" <>
-              more_info({scrobbles, facet_value, facet_type})
+            "#{index + 1}. **#{value}** <sup>#{count}x</sup> <br/>" <>
+              more_info(scrobbles, value, type, opts)
           end
         ]
         |> List.flatten()
@@ -94,13 +94,13 @@ defmodule Coda.Livebook.Base do
     end
   end
 
-  @spec more_info({Explorer.DataFrame.t(), any, atom | maybe_improper_list}) :: binary
-  def more_info({scrobbles, value, type}) do
+  def more_info(scrobbles, value, type, opts) do
     scrobbles = scrobbles |> DataFrame.filter(col(^type) == ^value)
 
     [
       "<small>#{more_info(scrobbles, type) |> Enum.join(", ")}</small>",
-      for(year <- years(scrobbles), do: "<small>#{year}</small>") |> Enum.join(", ")
+      year_counts(scrobbles)
+      |> render_years(new_facet_view: Keyword.get(opts, :new_facet_view, false))
     ]
     |> Enum.join("<br/>")
   end
@@ -140,11 +140,18 @@ defmodule Coda.Livebook.Base do
   defp facet(_type, 1, col), do: col[0]
   defp facet(type, count, _col), do: "#{count} #{type}s"
 
-  defp years(%DataFrame{} = scrobbles) do
+  defp year_counts(%DataFrame{} = scrobbles) do
     scrobbles
-    |> DataFrame.distinct(["year"])
-    |> Access.get("year")
-    |> Series.distinct()
-    |> Series.to_list()
+    |> DataFrame.frequencies(["year"])
+    |> DataFrame.to_rows()
+  end
+
+  defp render_years(year_counts, new_facet_view: false) do
+    for(%{"year" => year} <- year_counts, do: "<small>#{year}</small>") |> Enum.join(", ")
+  end
+
+  defp render_years(year_counts, new_facet_view: true) do
+    %{"year" => year, "counts" => counts} = year_counts |> hd
+    "<small>#{year}</small> <sup>#{counts}x</sup>"
   end
 end

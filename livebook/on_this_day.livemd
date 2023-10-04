@@ -17,8 +17,17 @@ alias Coda.OnThisDay
 alias Explorer.DataFrame
 alias Coda.Analytics.OnThisDay, as: OTDA
 
-df = OTDA.dataframe()
-new_on_this_day_df = OTDA.new_facet_dataframes(format: :ipc_stream)
+# try/rescue until LastfmArchive returns error tuples
+{scrobbles_df, new_facets_on_this_day_dfs} =
+  try do
+    {OTDA.dataframe(), OTDA.new_facet_dataframes(format: :ipc_stream)}
+  rescue
+    _error -> {nil, nil}
+  end
+
+new_artists = new_facets_on_this_day_dfs[:artists]
+new_albums = new_facets_on_this_day_dfs[:albums]
+new_tracks = new_facets_on_this_day_dfs[:tracks]
 
 :ok
 ```
@@ -27,17 +36,18 @@ new_on_this_day_df = OTDA.new_facet_dataframes(format: :ipc_stream)
 
 Analytics of all the music played on this day, today in this past. This Livebook is based on data created by [lastfm_archive](https://github.com/boonious/lastfm_archive).
 
-### Prerequisite
+### Prerequisites
 
 * [Setup, installation](https://hexdocs.pm/lastfm_archive/setup.html)
-* [Columnar data transforms](https://hexdocs.pm/lastfm_archive/transforming.html): please create an archive for analytics workloads in Apache Arrow format, i.e. transform with `format: :ipc_stream` option
+* [Columnar data transforms](https://hexdocs.pm/lastfm_archive/transforming.html#apache-arrow-archive): transform archive into Apache Arrow format (`format: :ipc_stream` option)
+* [Facets archiving](https://hexdocs.pm/lastfm_archive/facets.html#facets-archiving) (optional): create `artists`, `albums`, `tracks` archives, for the `For the first time` section
 
 <!-- livebook:{"branch_parent_index":0} -->
 
 ## Overview
 
 ```elixir
-{df, new_on_this_day_df} |> OnThisDay.render_overview()
+{scrobbles_df, new_facets_on_this_day_dfs} |> OnThisDay.render_overview()
 ```
 
 <!-- livebook:{"branch_parent_index":0} -->
@@ -45,25 +55,66 @@ Analytics of all the music played on this day, today in this past. This Livebook
 ## Most played
 
 ```elixir
-df |> OnThisDay.render_most_played()
+scrobbles_df |> OnThisDay.render_most_played()
 ```
 
-## Explore the data
+<!-- livebook:{"branch_parent_index":0} -->
+
+## For the very first time..
+
+What music did you discover on this day? The following analytics show various debut facets in your Lastfm listening history, top `artists`, `albums` and `tracks` scrobbled for the very first time.
+
+```elixir
+new_facets_on_this_day_dfs |> OnThisDay.render_new_on_this_day(scrobbles_df)
+```
+
+<!-- livebook:{"branch_parent_index":0} -->
+
+## Explore most played data
 
 In due course, further analytics and visualisation will be presented. These include newly discovered and most frequently played music on this day over the years. Meanwhile you can interactively delve into the data using [Kino explorer](https://hexdocs.pm/kino_explorer/Kino.Explorer.html) below.
 
-<!-- livebook:{"attrs":{"assign_to":null,"collect":true,"data_frame":"dataframe","data_frame_alias":"Elixir.DataFrame","is_data_frame":null,"missing_require":"Elixir.Explorer.DataFrame","operations":[{"active":true,"columns":["track","artist","album"],"data_options":{"album":"string","artist":"string","datetime":"datetime[μs]","id":"string","mmdd":"string","track":"string","year":"integer"},"operation_type":"group_by"},{"active":true,"columns":["id"],"data_options":{"album":"string","artist":"string","datetime":"datetime[μs]","id":"string","mmdd":"string","track":"string","year":"integer"},"operation_type":"summarise","query":"count"},{"active":true,"data_options":{"album":"string","artist":"string","id_count":"integer","track":"string"},"direction":"desc","operation_type":"sorting","sort_by":"id_count"}]},"chunks":null,"kind":"Elixir.KinoExplorer.DataTransformCell","livebook_object":"smart_cell"} -->
+<!-- livebook:{"attrs":{"assign_to":null,"collect":true,"data_frame":"scrobbles_df","data_frame_alias":"Elixir.DataFrame","is_data_frame":true,"missing_require":"Elixir.Explorer.DataFrame","operations":[{"active":true,"column":null,"data_options":{"album":"string","artist":"string","datetime":"datetime[μs]","id":"string","mmdd":"string","track":"string","year":"integer"},"datalist":[],"filter":null,"operation_type":"filters","type":"string","value":null},{"active":true,"columns":["track","album"],"data_options":{"album":"string","artist":"string","datetime":"datetime[μs]","id":"string","mmdd":"string","track":"string","year":"integer"},"operation_type":"group_by"},{"active":true,"columns":["datetime"],"data_options":{"album":"string","artist":"string","datetime":"datetime[μs]","id":"string","mmdd":"string","track":"string","year":"integer"},"operation_type":"summarise","query":"count"},{"active":true,"data_options":{"album":"string","datetime_count":"integer","track":"string"},"direction":"desc","operation_type":"sorting","sort_by":"datetime_count"}]},"chunks":null,"kind":"Elixir.KinoExplorer.DataTransformCell","livebook_object":"smart_cell"} -->
 
 ```elixir
 require Explorer.DataFrame
 
-dataframe
+scrobbles_df
 |> DataFrame.lazy()
-|> DataFrame.new(lazy: true)
-|> DataFrame.group_by(["track", "artist", "album"])
-|> DataFrame.summarise(id_count: count(id))
-|> DataFrame.arrange(desc: id_count)
+|> DataFrame.group_by(["track", "album"])
+|> DataFrame.summarise(datetime_count: count(datetime))
+|> DataFrame.arrange(desc: datetime_count)
 |> DataFrame.collect()
 ```
 
-<!-- livebook:{"offset":2643,"stamp":{"token":"QTEyOEdDTQ.EMY-aCgpXNrONW23b8ZtxkUdnBbYN4O9Q5Sh6HXbDUxGCXV4XcOqbhDqzJ0.W2caDfGI3kgctiyL.ocznx0ngWVvGDU8b0Lntm2VY8hZcRhFOstwihKZDtF37DxxyxwKS2gozCFAcYbb4w55vjj5m5x0fvpU.xreHH1HmhLrEb5JbX5FbOA","version":1}} -->
+<!-- livebook:{"branch_parent_index":0} -->
+
+## Explore new facets data
+
+<!-- livebook:{"attrs":{"assign_to":null,"collect":true,"data_frame":"new_artists","data_frame_alias":"Elixir.DataFrame","is_data_frame":true,"lazy":true,"missing_require":null,"operations":[{"active":true,"columns":["artist"],"data_options":{"artist":"string","counts":"integer","first_play":"datetime[μs]","last_play":"datetime[μs]"},"operation_type":"group_by"}]},"chunks":null,"kind":"Elixir.KinoExplorer.DataTransformCell","livebook_object":"smart_cell"} -->
+
+```elixir
+new_artists |> DataFrame.lazy() |> DataFrame.group_by("artist") |> DataFrame.collect()
+```
+
+<!-- livebook:{"attrs":{"assign_to":null,"collect":true,"data_frame":"new_albums","data_frame_alias":"Elixir.DataFrame","is_data_frame":true,"lazy":true,"missing_require":"Elixir.Explorer.DataFrame","operations":[{"active":true,"columns":["album","artist"],"data_options":{"album":"string","album_mbid":"string","artist":"string","counts":"integer","first_play":"datetime[μs]","last_play":"datetime[μs]"},"operation_type":"group_by"}]},"chunks":null,"kind":"Elixir.KinoExplorer.DataTransformCell","livebook_object":"smart_cell"} -->
+
+```elixir
+require Explorer.DataFrame
+
+new_albums
+|> DataFrame.lazy()
+|> DataFrame.group_by(["album", "artist"])
+|> DataFrame.collect()
+```
+
+<!-- livebook:{"attrs":{"assign_to":null,"collect":true,"data_frame":"new_tracks","data_frame_alias":"Elixir.DataFrame","is_data_frame":true,"lazy":true,"missing_require":null,"operations":[{"active":true,"column":null,"data_options":{"album":"string","artist":"string","counts":"integer","first_play":"datetime[μs]","last_play":"datetime[μs]","mbid":"string","track":"string"},"datalist":[],"filter":null,"operation_type":"filters","type":"string","value":null},{"active":true,"columns":["track","album","artist"],"data_options":{"album":"string","artist":"string","counts":"integer","first_play":"datetime[μs]","last_play":"datetime[μs]","mbid":"string","track":"string"},"operation_type":"group_by"}]},"chunks":null,"kind":"Elixir.KinoExplorer.DataTransformCell","livebook_object":"smart_cell"} -->
+
+```elixir
+new_tracks
+|> DataFrame.lazy()
+|> DataFrame.group_by(["track", "album", "artist"])
+|> DataFrame.collect()
+```
+
+<!-- livebook:{"offset":6002,"stamp":{"token":"QTEyOEdDTQ.WiFCR1YJ-40X6iRnJ5CRppg_PoFfCdOGraVvRlIP08wBgpvQh-Drobm12iE.srLU5fXny8W-atVT.6dtPF-a5sp3Ig1UR92_6tHwV1M61ZseyjJs-dD4Clvy2zOkZgw4mjN8FHQ.e4IAfYqfsqCOryGzL_mnzQ","version":1}} -->

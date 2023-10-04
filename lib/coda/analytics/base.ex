@@ -4,6 +4,7 @@ defmodule Coda.Analytics.Base do
   import Coda.Analytics.Commons, only: [frequencies: 3, rank_and_limit: 2]
   import Coda.Analytics.LastfmArchive.FacetConfigs, only: [default_opts: 0, facet_singular: 1]
   alias Explorer.DataFrame
+  require Explorer.DataFrame
 
   defmacro __using__(opts) do
     quote location: :keep, bind_quoted: [opts: opts] do
@@ -34,6 +35,20 @@ defmodule Coda.Analytics.Base do
         |> put_extra_stats(df)
         |> put_new_facets_stats(new_facet_dfs)
       end
+
+      for facet <- Keyword.get(opts, :facets, facets()) do
+        @impl true
+        def unquote(:"top_#{facet}")(df, opts \\ []), do: top_facets(df, unquote(facet), opts)
+
+        @impl true
+        def unquote(:"sample_#{facet}")(df, opts \\ []) do
+          top_facets(df, unquote(facet), opts |> Keyword.put(:rank, :sample))
+        end
+
+        defoverridable [{:"top_#{facet}", 2}, {:"sample_#{facet}", 2}]
+      end
+
+      defdelegate collect_new_facets(dfs, scrobbles, opts), to: Coda.Analytics.Base
 
       defp put_extra_stats(df, df_source) do
         df
@@ -82,18 +97,6 @@ defmodule Coda.Analytics.Base do
         |> DataFrame.collect()
         |> DataFrame.to_rows(atom_keys: true)
       end
-
-      for facet <- Keyword.get(opts, :facets, facets()) do
-        @impl true
-        def unquote(:"top_#{facet}")(df, opts \\ []), do: top_facets(df, unquote(facet), opts)
-
-        @impl true
-        def unquote(:"sample_#{facet}")(df, opts \\ []) do
-          top_facets(df, unquote(facet), opts |> Keyword.put(:rank, :sample))
-        end
-
-        defoverridable [{:"top_#{facet}", 2}, {:"sample_#{facet}", 2}]
-      end
     end
   end
 
@@ -101,10 +104,34 @@ defmodule Coda.Analytics.Base do
     opts = Keyword.validate!(options, default_opts())
 
     df
-    |> frequencies(facet_singular(facet_type), filter: opts[:filter], sort: opts[:sort])
+    |> frequencies(facet_singular(facet_type),
+      counts: opts[:counts],
+      filter: opts[:filter],
+      sort: opts[:sort]
+    )
     |> maybe_rank_and_limit(opts, opts[:rank])
     |> maybe_sample(opts[:rows], opts[:rank])
     |> maybe_more_info(df, facet_singular(facet_type), opts[:more_info])
+  end
+
+  def collect_new_facets(dfs, scrobbles, opts \\ []) do
+    opts = Keyword.validate!(opts, default_opts())
+
+    for {facet, df} <- dfs do
+      df =
+        case facet == :albums do
+          true ->
+            df
+            |> DataFrame.filter(album != "")
+            |> DataFrame.head(opts[:rows])
+            |> DataFrame.collect()
+
+          false ->
+            df |> DataFrame.head(opts[:rows]) |> DataFrame.collect()
+        end
+
+      {df, facet_singular(facet), DataFrame.join(df, scrobbles |> DataFrame.collect())}
+    end
   end
 
   defp maybe_rank_and_limit(df, _opts, :sample), do: df |> DataFrame.collect()

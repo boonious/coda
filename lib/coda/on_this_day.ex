@@ -8,6 +8,7 @@ defmodule Coda.OnThisDay do
   import Coda.Analytics.OnThisDay
   import Explorer.Series, only: [not_equal: 2]
 
+  alias Coda.Analytics.OnThisDay, as: OTDA
   alias Explorer.DataFrame
 
   @impl true
@@ -21,41 +22,41 @@ defmodule Coda.OnThisDay do
     super(stats, opts)
   end
 
-  def render_overview(%DataFrame{} = df), do: df |> digest() |> overview([])
+  # from try/rescue clause pending better error handling from LastfmArchive
+  def render_overview(nil), do: {:error, :einval}
+  def render_overview({nil, nil}), do: {:error, :einval}
+
+  def render_overview(%DataFrame{} = df), do: digest(df) |> overview([])
   def render_overview({df, new_facet_df}), do: digest(df, new_facet_df) |> overview([])
 
-  def render_most_played(df) do
-    not_untitled_albums = &not_equal(&1["album"], "")
+  def render_most_played(nil), do: {:error, :einval}
 
-    [
+  def render_most_played(df) do
+    for facet <- [:artists, :albums, :tracks] do
+      filter = if facet == :albums, do: [filter: &not_equal(&1["album"], "")], else: []
+
+      top_facets = apply(OTDA, :"top_#{facet}", [df, [rows: 8] ++ filter])
+      top_facets_freq = apply(OTDA, :"top_#{facet}", [df, [rows: 8, sort: :freq] ++ filter])
+      samples = apply(OTDA, :"sample_#{facet}", [df, [rows: 8, counts: 1] ++ filter])
+
       {
-        "<< Artists >>",
+        "<< #{facet} >>",
         [
-          top_artists(df, rows: 8) |> render_facets(title: "most played"),
-          top_artists(df, rows: 8, sort: :freq) |> render_facets(title: "most freq (years)"),
-          sample_artists(df, rows: 8, counts: 1) |> render_facets(title: "played once (sample)")
-        ]
-        |> Kino.Layout.grid(columns: 3)
-      },
-      {
-        "<< Albums >>",
-        [
-          top_albums(df, rows: 8, filter: not_untitled_albums) |> render_facets(title: "most played"),
-          top_albums(df, rows: 8, sort: :freq, filter: not_untitled_albums) |> render_facets(title: "most freq (years)"),
-          sample_albums(df, rows: 8, counts: 1, filter: not_untitled_albums) |> render_facets(title: "played once (sample)")
-        ]
-        |> Kino.Layout.grid(columns: 3)
-      },
-      {
-        "<< Tracks >>",
-        [
-          top_tracks(df, rows: 8) |> render_facets(title: "most played"),
-          top_tracks(df, rows: 8, sort: :freq) |> render_facets(title: "most freq (years)"),
-          sample_tracks(df, rows: 8, counts: 1) |> render_facets(title: "played once (sample)")
+          top_facets |> render_facets(title: "most played"),
+          top_facets_freq |> render_facets(title: "most freq (years)"),
+          samples |> render_facets(title: "played once (sample)")
         ]
         |> Kino.Layout.grid(columns: 3)
       }
-    ]
+    end
     |> Kino.Layout.tabs()
+  end
+
+  def render_new_on_this_day(nil), do: {:error, :einval}
+
+  def render_new_on_this_day(new_facet_dfs, scrobbles) do
+    OTDA.collect_new_facets(new_facet_dfs, scrobbles, rows: 8)
+    |> Enum.map(&render_facets(&1, new_facet_view: true))
+    |> Kino.Layout.grid(columns: 3)
   end
 end
