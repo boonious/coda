@@ -27,7 +27,7 @@ defmodule Coda.Livebook.BaseTest do
       df = @test_analytics.dataframe([])
       facet = unquote(facet)
       facets_data = apply(@test_analytics, :"top_#{facet}", [df])
-      assert %Kino.Markdown{content: _content} = @test_livebook.render_facets(facets_data, [])
+      assert %Kino.Markdown{} = @test_livebook.render_facets(facets_data, [])
     end
   end
 end

@@ -8,7 +8,7 @@ defmodule Coda.MixProject do
   def project do
     [
       app: :coda,
-      version: "0.2.0",
+      version: "0.3.0",
       elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -49,7 +49,7 @@ defmodule Coda.MixProject do
     [
       {:lastfm_archive, "~> 1.2"},
       {:explorer, "~> 0.7"},
-      {:kino, "~> 0.10"},
+      {:kino, "0.10.0"},
       {:kino_vega_lite, "~> 0.1.10"},
 
       # test and dev only

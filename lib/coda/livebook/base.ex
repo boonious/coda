@@ -143,6 +143,7 @@ defmodule Coda.Livebook.Base do
   defp year_counts(%DataFrame{} = scrobbles) do
     scrobbles
     |> DataFrame.frequencies(["year"])
+    |> DataFrame.arrange(asc: year)
     |> DataFrame.to_rows()
   end
 
@@ -151,7 +152,13 @@ defmodule Coda.Livebook.Base do
   end
 
   defp render_years(year_counts, new_facet_view: true) do
-    %{"year" => year, "counts" => counts} = year_counts |> hd
-    "<small>#{year}</small> <sup>#{counts}x</sup>"
+    for {%{"year" => year, "counts" => _counts}, index} <- year_counts |> Enum.with_index() do
+      case {index, length(year_counts)} do
+        {0, 1} -> "<small>#{year}</small>"
+        {0, _} -> "<small>**#{year}**</small>"
+        {_, _} -> "<small>#{year}</small>"
+      end
+    end
+    |> Enum.join(", ")
   end
 end
