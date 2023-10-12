@@ -39,12 +39,13 @@ defmodule Coda.Analytics.OnThisDayTest do
   describe "dataframe/1" do
     setup context do
       this_day = Date.utc_today() |> Calendar.strftime("%m%d")
+      columns = Coda.Analytics.LastfmArchive.FacetConfigs.facets_columns()[:scrobbles]
 
       %{
         options: [
           user: context.user,
           this_day: this_day,
-          columns: OnThisDay.columns(),
+          columns: columns,
           facet: :scrobbles,
           format: :ipc_stream
         ]
@@ -104,12 +105,14 @@ defmodule Coda.Analytics.OnThisDayTest do
 
   test "digest/0", %{dataframe: df} do
     assert %{
-             album: %{count: 1},
-             artist: %{count: 1},
-             datetime: %{count: 1},
-             id: %{count: 1},
-             track: %{count: 1},
-             year: %{count: 1, max: 2023, min: 2023}
+             counts: 1,
+             max_year: 2023,
+             min_year: 2023,
+             n_albums: 1,
+             n_artists: 1,
+             n_tracks: 1,
+             n_years: 1,
+             years_digest: [%{counts: 1, year: 2023}]
            } = df |> OnThisDay.digest()
   end
 end

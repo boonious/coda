@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0 (2023-10-06)
+
+* analytics for new music discovered on-this-day, listed in a new Livebook section
+* rework on-this-day Livebook including overview visuals
+
 ## 0.2.0 (2023-09-13)
 
 * faster (optimised) on-this-day data frame creation functions and Livebook UX

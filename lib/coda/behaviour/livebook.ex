@@ -8,6 +8,6 @@ defmodule Coda.Behaviour.Livebook do
   @type kino_ui :: Kino.Markdown.t() | struct()
   @type options :: keyword()
 
-  @callback overview(digest()) :: kino_ui()
+  @callback overview(digest(), options) :: kino_ui()
   @callback render_facets(facets(), options) :: kino_ui()
 end

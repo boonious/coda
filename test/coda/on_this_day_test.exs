@@ -16,8 +16,7 @@ defmodule Coda.OnThisDayTest do
   end
 
   test "render_overview/1", %{dataframe: df} do
-    assert %Kino.Markdown{content: content} = OnThisDay.render_overview(df)
-    assert content =~ "**10** scrobbles"
+    assert %Kino.Layout{} = OnThisDay.render_overview(df)
   end
 
   test "render_most_played/1", %{dataframe: df} do
